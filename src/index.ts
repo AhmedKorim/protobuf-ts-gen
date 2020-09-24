@@ -6,14 +6,21 @@ import {
   getTsPrimitive,
   GRPCMessage,
   PrimitiveType,
+  RPCMethod,
+  RPCMethodRaw,
   RpcType,
 } from "./types";
 import { ObjectOf, Scalar } from "./types/scalar.type";
+import { RPCService, Service } from "./types/service.interface";
 
 export class CodeGen {
   private readonly _names: string[];
   private readonly _scalars: ObjectOf<ObjectOf<Scalar>>;
-  constructor(private readonly grpcObject: GrpcObject) {
+  private readonly _services: ObjectOf<ObjectOf<Service>>;
+  constructor(
+    private readonly grpcObject: GrpcObject,
+    private readonly streamType: string
+  ) {
     this._names = Object.keys(this.grpcObject);
     this._scalars = this._names
       .map((i) => ({
@@ -26,20 +33,31 @@ export class CodeGen {
         }),
         {}
       );
+    this._services = this._names
+      .map((i) => ({
+        [i]: this.buildServices(i),
+      }))
+      .reduce(
+        (acc, i) => ({
+          ...acc,
+          ...i,
+        }),
+        {}
+      );
     return this;
   }
 
   static getTypescriptPrimitive = getTsPrimitive;
-  static loadSync(path: string): CodeGen {
+  static loadSync(path: string, streamType = "Observable"): CodeGen {
     const packageObject = protoLoader.loadSync(path);
     const grpcObject = grpcLibrary.loadPackageDefinition(packageObject);
-    return new CodeGen(grpcObject);
+    return new CodeGen(grpcObject, streamType);
   }
 
-  static async load(path: string) {
+  static async load(path: string, streamType = "Observable") {
     const packageObject = await protoLoader.load(path);
     const grpcObject = grpcLibrary.loadPackageDefinition(packageObject);
-    return new CodeGen(grpcObject);
+    return new CodeGen(grpcObject, streamType);
   }
 
   getTypeNames(packageName: string): string[] {
@@ -49,12 +67,26 @@ export class CodeGen {
       return typeof packageType[i] !== "function";
     });
   }
+  getServiceNames(packageName: string): string[] {
+    const packageType = this.grpcObject[packageName];
+    return Object.keys(packageType).filter((i) => {
+      // @ts-ignore
+      return typeof packageType[i] === "function";
+    });
+  }
   get names() {
     return this._names;
   }
   private getScalars(packageName: string): ObjectOf<Scalar> {
     return this._scalars[packageName];
   }
+  private getServices(packageName: string): ObjectOf<Service> {
+    return this._services[packageName];
+  }
+  getService(packageName: string, serviceName: string): Service {
+    return this.getServices(packageName)[serviceName];
+  }
+
   public genType(packageName: string, typename: string): string {
     let str = `export type ${typename} = `;
     const typeDif = this.getScalars(packageName)[typename];
@@ -113,7 +145,62 @@ export class CodeGen {
 
     return str;
   }
-
+  public genService(packageName: string, typename: string): string {
+    let str = `export type ${typename} = {`;
+    const typeDif = this.getServices(packageName)[typename];
+    const methodkeys = Object.keys(typeDif);
+    for (const methodkey of methodkeys) {
+      const { requestType, responseType, ...method } = typeDif[methodkey];
+      const req = this.scalarOrWrappedStream(requestType);
+      const res = this.scalarOrWrappedStream(responseType);
+      str = str.concat(`\n ${method.originalName}(request:${req}):${res};`);
+    }
+    str = str.concat(`\n}`);
+    return str;
+  }
+  private buildServices(packageName: string): ObjectOf<Service> {
+    const serviceNames = this.getServiceNames(packageName);
+    const packageObject = (this.grpcObject[
+      packageName
+    ] as unknown) as GRPCMessage;
+    // @ts-ignore
+    let services: RPCMethodRaw = {};
+    for (const serviceName of serviceNames) {
+      // @ts-ignore
+      const serv = packageObject[serviceName].service as RPCService;
+      const methodNames = Object.keys(serv);
+      // @ts-ignore
+      let service: RPCMethodRaw = {};
+      for (const methodName of methodNames) {
+        const {
+          requestType,
+          requestStream,
+          originalName,
+          path,
+          responseType,
+          responseStream,
+          ..._
+        } =
+          // @ts-ignore
+          serv[methodName] as RPCMethod;
+        const ReqType =
+          requestType.type.name + (requestStream ? ":stream:" : "");
+        const resType =
+          responseType.type.name + (responseStream ? ":stream:" : "");
+        // @ts-ignore
+        service[methodName] = ({
+          originalName: originalName,
+          path,
+          requestType: ReqType,
+          responseType: resType,
+        } as unknown) as RPCMethodRaw;
+      }
+      // @ts-ignore
+      services[serviceName] = service;
+    }
+    // @ts-ignore
+    return services;
+  }
   private buildScalars(packageName: string): ObjectOf<Scalar> {
     const scalarNames = this.getTypeNames(packageName);
     let listPure: ObjectOf<string | object> = {};
@@ -166,11 +253,13 @@ export class CodeGen {
     return scalar;
   }
   public genPackageDefinition(packageName: string): string {
-    let str = `//TYPES FOR PACKAGE ${packageName}\n\n
-	  /// Types
-	  `;
+    let str = `//TYPES FOR PACKAGE ${packageName}\n\n`;
     for (const typeName of this.getTypeNames(packageName)) {
       str = str.concat(`\n${this.genType(packageName, typeName)}\n`);
+    }
+    str = str.concat(`\n\n// SERVICES FOR PACKAGE $${packageName}\n\n`);
+    for (const typeName of this.getServiceNames(packageName)) {
+      str = str.concat(`\n${this.genService(packageName, typeName)}\n`);
     }
     return str;
   }
@@ -181,5 +270,10 @@ export class CodeGen {
     // @ts-ignore
     const { fileDescriptorProtos, ...r } = field;
     return r;
+  }
+  private scalarOrWrappedStream(type: string): string {
+    return type.indexOf(":stream:") > -1
+      ? `${this.streamType}<${type.replace(":stream:", "")}>`
+      : type;
   }
 }

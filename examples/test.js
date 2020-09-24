@@ -8,3 +8,4 @@ const stream = fs.createWriteStream(
   path.join(__dirname, "output", "protobuf-types.ts")
 );
 stream.write(codgen.genPackageDefinition(firstPackageName));
+console.log(codgen.getService(firstPackageName, "Handshake"));
