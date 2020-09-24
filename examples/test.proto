@@ -1,0 +1,95 @@
+syntax = "proto3";
+package sendflex;
+
+/// Messages
+
+message Void {
+}
+
+message WASession {
+	string client_token = 1;
+	string server_token = 2;
+	string wid = 3;
+	string client_id = 4;
+	string enc = 5;
+	string mac = 6;
+}
+
+message HandshakeRequest {
+	string clientId = 1;
+	WASession session = 2;
+}
+
+message HandshakeResponse {
+	oneof value {
+		AlreadyLoggedInResponse alreadyExists = 1;
+		QRCodeResponse qr = 2;
+	}
+}
+
+message QuerySessionResponse {
+	WASession session = 1;
+}
+
+message AlreadyLoggedInResponse {
+}
+
+message QRCodeResponse {
+	bytes buffer = 1;
+	uint64 valid_for = 2;
+}
+
+message ExistsRequest {
+	string jid = 1;
+}
+
+message ExistsResponse {
+	bool exists = 1;
+	string jid = 2;
+}
+
+message EventMessage {
+	oneof event {
+		LoginSuccessEvent loggedIn = 1;
+		ChatMessage chatMessage = 2;
+		LoggedOut loggedOut = 3;
+		TakeOver takeover = 4;
+		Status status = 5;
+		SessionUpdate sessionUpdate = 6;
+	}
+}
+
+message LoginSuccessEvent {
+}
+
+message ChatMessage {
+}
+
+message TakeOver {
+}
+message Status {
+}
+
+// that meansæ the session got invalidated by the user ( form the mobile client)
+message LoggedOut {
+}
+message SessionUpdate {
+	WASession session = 1;
+
+}
+/// Services
+
+service Handshake {
+	rpc Login (HandshakeRequest) returns (HandshakeResponse);
+	rpc Logout (Void) returns (Void);
+	rpc ReGenerateQRCode (Void) returns (HandshakeResponse);
+	rpc QuerySession (Void) returns (QuerySessionResponse);
+}
+
+service JidExits {
+	rpc Exists (ExistsRequest) returns (ExistsResponse);
+}
+
+service Events {
+	rpc subscribe (Void) returns (stream EventMessage);
+}
