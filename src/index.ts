@@ -12,7 +12,7 @@ import {
 } from "./types";
 import { ObjectOf, Scalar } from "./types/scalar.type";
 import { RPCService, Service } from "./types/service.interface";
-
+import prettier from "prettier";
 export class CodeGen {
   private readonly _names: string[];
   private readonly _scalars: ObjectOf<ObjectOf<Scalar>>;
@@ -261,7 +261,7 @@ export class CodeGen {
     for (const typeName of this.getServiceNames(packageName)) {
       str = str.concat(`\n${this.genService(packageName, typeName)}\n`);
     }
-    return str;
+    return this.prettify(str);
   }
   private omitDescriptorBuffer(field: RpcType | Field["type"] | undefined) {
     if (!field) {
@@ -275,5 +275,8 @@ export class CodeGen {
     return type.indexOf(":stream:") > -1
       ? `${this.streamType}<${type.replace(":stream:", "")}>`
       : type;
+  }
+  private prettify(string: string): string {
+    return prettier.format(string);
   }
 }

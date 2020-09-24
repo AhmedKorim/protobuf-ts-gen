@@ -3,41 +3,41 @@
 export type Void = object;
 
 export type WASession = {
-  clientToken: string;
-  serverToken: string;
-  wid: string;
-  clientId: string;
-  enc: string;
-  mac: string;
+  clientToken: string,
+  serverToken: string,
+  wid: string,
+  clientId: string,
+  enc: string,
+  mac: string,
 };
 
 export type HandshakeRequest = {
-  clientId: string;
-  session: WASession;
+  clientId: string,
+  session: WASession,
 };
 
 export type HandshakeResponse = {
-  value: { alreadyExists: AlreadyLoggedInResponse } | { qr: QRCodeResponse };
+  value: { alreadyExists: AlreadyLoggedInResponse } | { qr: QRCodeResponse },
 };
 
 export type QuerySessionResponse = {
-  session: WASession;
+  session: WASession,
 };
 
 export type AlreadyLoggedInResponse = object;
 
 export type QRCodeResponse = {
-  buffer: Buffer;
-  validFor: number;
+  buffer: Buffer,
+  validFor: number,
 };
 
 export type ExistsRequest = {
-  jid: string;
+  jid: string,
 };
 
 export type ExistsResponse = {
-  exists: boolean;
-  jid: string;
+  exists: boolean,
+  jid: string,
 };
 
 export type EventMessage = {
@@ -47,7 +47,7 @@ export type EventMessage = {
     | { loggedOut: LoggedOut }
     | { takeover: TakeOver }
     | { status: Status }
-    | { sessionUpdate: SessionUpdate };
+    | { sessionUpdate: SessionUpdate },
 };
 
 export type LoginSuccessEvent = object;
@@ -61,22 +61,22 @@ export type Status = object;
 export type LoggedOut = object;
 
 export type SessionUpdate = {
-  session: WASession;
+  session: WASession,
 };
 
 // SERVICES FOR PACKAGE $sendflex
 
 export type Handshake = {
-  login(request: HandshakeRequest): HandshakeResponse;
-  logout(request: Void): Void;
-  reGenerateQrCode(request: Void): HandshakeResponse;
-  querySession(request: Void): QuerySessionResponse;
+  login(request: HandshakeRequest): HandshakeResponse,
+  logout(request: Void): Void,
+  reGenerateQrCode(request: Void): HandshakeResponse,
+  querySession(request: Void): QuerySessionResponse,
 };
 
 export type JidExits = {
-  exists(request: ExistsRequest): ExistsResponse;
+  exists(request: ExistsRequest): ExistsResponse,
 };
 
 export type Events = {
-  subscribe(request: Void): Observable<EventMessage>;
+  subscribe(request: Void): Observable<EventMessage>,
 };
