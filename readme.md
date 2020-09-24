@@ -7,13 +7,9 @@
 <div align="center">
   <sub>
       ⚠ Still Under Constructions ⚠. will work find for basic sbuf i will add more road map you may find on the example folder a protobuf file and the
-       generate output
+       generated output
   </sub>
 </div>
-
-## About
-
-this implementation of docker engine still under Constructions , only the container api is working now,it's strongly typed
 
 ## example
 
@@ -23,13 +19,14 @@ more example will add on the example folder
 const { CodeGen } = require("../dist/index");
 const fs = require("fs");
 const path = require("path");
+
+
+
 /// load the protocol buffer from a file
 // you may use load for async version
 // for bio-directional connection you may tell the type of the message wrapper
 // const codgen = CodeGen.loadSync(path.join(__dirname, "test.proto" ,"Observable")); // rxjs Observable
 // const codgen = CodeGen.loadSync(path.join(__dirname, "test.proto" ,"Stream"));
-
-
 const codgen = CodeGen.loadSync(path.join(__dirname, "test.proto"));
 // this return the packages you have on the proto buf; here we take the first one
 const firstPackageName = codgen.names[0]; // ["package-name"]
@@ -37,6 +34,8 @@ console.log(codgen.genType(firstPackageName, "EventMessage")); // log the type f
 const stream = fs.createWriteStream(
   path.join(__dirname, "output", "protobuf-types.ts")
 );
+
+
 // the will return the full definition for the package
 stream.write(codgen.genPackageDefinition(firstPackageName));
 console.log(codgen.getService(firstPackageName, "Handshake"));
